@@ -1,0 +1,90 @@
+// Blynk Configuration
+#define BLYNK_TEMPLATE_ID "TMPL3402KQtsP"
+#define BLYNK_TEMPLATE_NAME "air quality"
+#define BLYNK_AUTH_TOKEN "r4Gmn7bWAI90LTaskRBjsrUCVK1THRIO"
+
+// Include libraries
+#include <LiquidCrystal.h>   // For parallel LCD
+#include <WiFi.h>
+#include <BlynkSimpleEsp32.h>
+#include "DHT.h"
+
+// WiFi credentials
+char ssid[] = "W305_4G";    // Your WiFi SSID
+char pass[] = "eva@124689"; // Your WiFi Password
+
+// DHT Configuration
+#define DHTPIN 4          // DHT11 connected to GPIO 4
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+// MQ135 Gas Sensor Pin
+#define MQ135_PIN 34     // Analog pin
+
+// Initialize LCD (RS, E, D4, D5, D6, D7)
+LiquidCrystal lcd(12, 14, 27, 26, 25, 33);
+
+void setup() {
+  // Start Serial Monitor
+  Serial.begin(115200);
+  
+  // Initialize LCD
+  lcd.begin(16, 2);
+  lcd.print("Connecting WiFi");
+
+  // Initialize DHT Sensor
+  dht.begin();
+
+  // Connect to Blynk
+  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+  
+  lcd.clear();
+  lcd.print("Connected!");
+  delay(1000);
+}
+
+void loop() {
+  Blynk.run();
+  
+  // Read sensors
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+  int gasValue = analogRead(MQ135_PIN);
+
+  // Error checking
+  if (isnan(h) || isnan(t)) {
+    Serial.println("Failed to read DHT sensor!");
+    lcd.clear();
+    lcd.print("Sensor Error");
+    delay(2000);
+    return;
+  }
+
+  // Print to Serial
+  Serial.print("Temperature: ");
+  Serial.print(t);
+  Serial.print(" °C, Humidity: ");
+  Serial.print(h);
+  Serial.print("%, Gas: ");
+  Serial.println(gasValue);
+
+  // Update LCD
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("T:");
+  lcd.print(t);
+  lcd.print((char)223); // degree symbol
+  lcd.print("C H:");
+  lcd.print(h);
+  lcd.print("%");
+  lcd.setCursor(0, 1);
+  lcd.print("Gas:");
+  lcd.print(gasValue);
+
+  // Send data to Blynk
+  Blynk.virtualWrite(V0, t);       // Temperature to V0
+  Blynk.virtualWrite(V1, h);       // Humidity to V1
+  Blynk.virtualWrite(V2, gasValue);// Gas Sensor to V2
+
+  delay(2000); // Delay for stability
+}
